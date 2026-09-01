@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>BrotherBiz — Business Manager</title>
+
+<!-- PWA Meta Tags -->
+<meta name="theme-color" content="#1e293b"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="BrotherBiz"/>
+<meta name="description" content="Business Manager for Sand, Agriculture, Vehicles, Credit and Tenders"/>
+
+<!-- PWA Manifest (inline via data URI) -->
+<link rel="manifest" href="manifest.json"/>
+
+<!-- Apple Touch Icon (inline SVG as data URI) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%231e293b'/%3E%3Ctext x='50%25' y='58%25' font-size='300' text-anchor='middle' dominant-baseline='middle' font-family='system-ui'%3E%F0%9F%92%BC%3C/text%3E%3C/svg%3E"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --accent: #16a34a;
+    --danger: #dc2626;
+    --warn: #d97706;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --sidebar-bg: #1e293b;
+    --sidebar-text: #cbd5e1;
+    --sidebar-active: #2563eb;
+  }
+  body { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+
+  /* Sidebar */
+  #sidebar {
+    width: 220px; min-height: 100vh; background: var(--sidebar-bg); display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+  }
+  #sidebar .brand { padding: 20px 18px 14px; border-bottom: 1px solid #334155; }
+  #sidebar .brand h1 { font-size: 18px; font-weight: 700; color: #f1f5f9; letter-spacing: .5px; }
+  #sidebar .brand small { color: #94a3b8; font-size: 11px; }
+  #sidebar nav { flex: 1; padding: 10px 0; }
+  #sidebar nav a {
+    display: flex; align-items: center; gap: 10px; padding: 10px 18px;
+    color: var(--sidebar-text); text-decoration: none; font-size: 14px; font-weight: 500;
+    border-left: 3px solid transparent; transition: background .15s;
+  }
+  #sidebar nav a:hover { background: #334155; }
+  #sidebar nav a.active { background: #1e3a5f; color: #93c5fd; border-left-color: var(--sidebar-active); }
+  #sidebar nav a .icon { font-size: 17px; width: 22px; text-align: center; }
+  #sidebar .version { padding: 14px 18px; color: #475569; font-size: 11px; border-top: 1px solid #334155; }
+
+  /* Main */
+  #main { margin-left: 220px; flex: 1; padding: 28px 32px; min-height: 100vh; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Page header */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .page-header h2 { font-size: 22px; font-weight: 700; }
+  .page-header p { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+  /* Cards */
+  .card { background: var(--card); border-radius: 10px; border: 1px solid var(--border); padding: 20px; margin-bottom: 20px; }
+  .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+
+  /* Summary tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .tile { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .tile .label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+  .tile .value { font-size: 24px; font-weight: 700; margin-top: 6px; color: var(--primary); }
+  .tile .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .tile.green .value { color: var(--accent); }
+  .tile.warn .value { color: var(--warn); }
+  .tile.red .value { color: var(--danger); }
+
+  /* Forms */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 14px;
+    background: #f8fafc; transition: border .15s; outline: none; color: var(--text);
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); background: #fff; }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 18px; border: none; border-radius: 7px;
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-success { background: var(--accent); color: #fff; }
+  .btn-danger { background: var(--danger); color: #fff; font-size: 12px; padding: 5px 10px; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { background: var(--bg); }
+  .btn-warn { background: var(--warn); color: #fff; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th { background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12px;
+    text-transform: uppercase; letter-spacing: .4px; color: var(--muted); border-bottom: 1px solid var(--border); }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  tbody tr:hover { background: #f8fafc; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-red { background: #fee2e2; color: #b91c1c; }
+  .badge-warn { background: #fef3c7; color: #92400e; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+
+  /* Section divider */
+  .section-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .6px; margin: 24px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
+  .empty .icon { font-size: 36px; margin-bottom: 8px; }
+
+  /* Alert */
+  .alert { padding: 10px 14px; border-radius: 7px; font-size: 13px; margin-bottom: 16px; }
+  .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+  .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+  /* Print */
+  @media print {
+    #sidebar { display: none; }
+    #main { margin-left: 0; padding: 0; }
+    .btn, .no-print { display: none !important; }
+  }
+
+  /* Bottom nav for mobile */
+  #bottom-nav {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+    background: var(--sidebar-bg);
+    border-top: 1px solid #334155;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  #bottom-nav .bnav-scroll {
+    display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  #bottom-nav .bnav-scroll::-webkit-scrollbar { display: none; }
+  #bottom-nav a {
+    flex: 0 0 auto; display: flex; flex-direction: column; align-items: center;
+    gap: 3px; padding: 8px 14px; color: #94a3b8; text-decoration: none;
+    font-size: 10px; font-weight: 600; white-space: nowrap; min-width: 60px;
+    border-top: 2px solid transparent; transition: color .15s;
+  }
+  #bottom-nav a .bicon { font-size: 20px; line-height: 1; }
+  #bottom-nav a.active { color: #93c5fd; border-top-color: #2563eb; }
+
+  /* Mobile install banner */
+  #install-banner {
+    display: none; align-items: center; justify-content: space-between;
+    background: #1d4ed8; color: #fff; padding: 10px 16px; font-size: 13px;
+    position: sticky; top: 0; z-index: 300;
+  }
+  #install-banner button { background: #fff; color: #1d4ed8; border: none;
+    border-radius: 6px; padding: 5px 12px; font-weight: 700; font-size: 12px; cursor: pointer; }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    #sidebar { display: none; }
+    #bottom-nav { display: block; }
+    #main { margin-left: 0; padding: 12px 12px 80px 12px; }
+    .tiles { grid-template-columns: repeat(2, 1fr); }
+    .form-grid { grid-template-columns: 1fr; }
+    .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .page-header > div:last-child, .page-header > button, .page-header > div[style] { width: 100%; }
+    .btn { width: 100%; justify-content: center; }
+    .page-header .btn, .page-header > div[style] .btn { width: auto; }
+    table { font-size: 12px; }
+    thead th, tbody td { padding: 8px 8px; }
+    .card { padding: 14px; }
+    h2 { font-size: 18px !important; }
+    .tile .value { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="brand">
+    <h1>💼 BrotherBiz</h1>
+    <small>Business Manager</small>
+  </div>
+  <nav>
+    <a href="#" class="active" onclick="showPage('dashboard',this)"><span class="icon">📊</span><span>Dashboard</span></a>
+    <a href="#" onclick="showPage('sand',this)"><span class="icon">🏗️</span><span>Sand Business</span></a>
+    <a href="#" onclick="showPage('agriculture',this)"><span class="icon">🌾</span><span>Agriculture</span></a>
+    <a href="#" onclick="showPage('vehicles',this)"><span class="icon">🚛</span><span>Vehicles</span></a>
+    <a href="#" onclick="showPage('credit',this)"><span class="icon">💰</span><span>Credit / Loans</span></a>
+    <a href="#" onclick="showPage('tenders',this)"><span class="icon">📋</span><span>Tenders</span></a>
+    <a href="#" onclick="showPage('reports',this)"><span class="icon">📈</span><span>Reports</span></a>
+  </nav>
+  <div class="version">BrotherBiz v1.0 · Demo</div>
+</div>
+
+<!-- BOTTOM NAV (mobile) -->
+<div id="bottom-nav">
+  <div class="bnav-scroll">
+    <a href="#" class="active" onclick="showPage('dashboard',this)"><span class="bicon">📊</span>Dashboard</a>
+    <a href="#" onclick="showPage('sand',this)"><span class="bicon">🏗️</span>Sand</a>
+    <a href="#" onclick="showPage('agriculture',this)"><span class="bicon">🌾</span>Agri</a>
+    <a href="#" onclick="showPage('vehicles',this)"><span class="bicon">🚛</span>Vehicles</a>
+    <a href="#" onclick="showPage('credit',this)"><span class="bicon">💰</span>Credit</a>
+    <a href="#" onclick="showPage('tenders',this)"><span class="bicon">📋</span>Tenders</a>
+    <a href="#" onclick="showPage('reports',this)"><span class="bicon">📈</span>Reports</a>
+  </div>
+</div>
+
+<!-- INSTALL BANNER -->
+<div id="install-banner">
+  <span>📲 Install BrotherBiz on your phone!</span>
+  <button onclick="installPWA()">Install</button>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="main">
+
+  <!-- ========== DASHBOARD ========== -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header">
+      <div><h2>📊 Dashboard</h2><p>Overview of all businesses</p></div>
+      <button class="btn btn-outline" onclick="refreshDashboard()">🔄 Refresh</button>
+    </div>
+    <div id="dash-tiles" class="tiles"></div>
+    <div class="card">
+      <h3>⚡ Recent Activity</h3>
+      <div id="dash-recent"></div>
+    </div>
+    <div class="card">
+      <h3>💰 Credit Alerts — Overdue / Due Soon</h3>
+      <div id="dash-credit-alerts"></div>
+    </div>
+  </div>
+
+  <!-- ========== SAND ========== -->
+  <div id="page-sand" class="page">
+    <div class="page-header">
+      <div><h2>🏗️ Sand Business</h2><p>Track sand sales and loads</p></div>
+      <button class="btn btn-success" onclick="exportCSV('sand')">⬇️ Export CSV</button>
+    </div>
+    <div class="card">
+      <h3>Add New Sale</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Date</label><input type="date" id="sand-date"/></div>
+        <div class="form-group"><label>Buyer Name</label><input type="text" id="sand-buyer" placeholder="e.g. Ramesh Kumar"/></div>
+        <div class="form-group"><label>Vehicle No.</label><input type="text" id="sand-vehicle" placeholder="e.g. MH12AB1234"/></div>
+        <div class="form-group"><label>Quantity (loads/tons)</label><input type="number" id="sand-qty" placeholder="e.g. 5"/></div>
+        <div class="form-group"><label>Rate (₹ per load)</label><input type="number" id="sand-rate" placeholder="e.g. 3000"/></div>
+        <div class="form-group"><label>Amount Received (₹)</label><input type="number" id="sand-paid" placeholder="Total or partial"/></div>
+        <div class="form-group"><label>Payment Status</label>
+          <select id="sand-status">
+            <option>Paid</option><option>Partial</option><option>Pending</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Notes</label><input type="text" id="sand-notes" placeholder="Optional"/></div>
+      </div>
+      <br/>
+      <button class="btn btn-primary" onclick="addSand()">➕ Add Sale</button>
+    </div>
+    <div class="card">
+      <h3>Sales Records</h3>
+      <div class="table-wrap"><table id="sand-table">
+        <thead><tr><th>Date</th><th>Buyer</th><th>Vehicle</th><th>Qty</th><th>Rate</th><th>Total</th><th>Received</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="sand-body"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ========== AGRICULTURE ========== -->
+  <div id="page-agriculture" class="page">
+    <div class="page-header">
+      <div><h2>🌾 Agriculture</h2><p>Track crops, land, seasons and income</p></div>
+      <button class="btn btn-success" onclick="exportCSV('agriculture')">⬇️ Export CSV</button>
+    </div>
+    <div class="card">
+      <h3>Add Record</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Date</label><input type="date" id="agri-date"/></div>
+        <div class="form-group"><label>Crop Name</label><input type="text" id="agri-crop" placeholder="e.g. Wheat, Cotton"/></div>
+        <div class="form-group"><label>Land (Acres)</label><input type="number" id="agri-land" placeholder="e.g. 10"/></div>
+        <div class="form-group"><label>Season</label>
+          <select id="agri-season"><option>Kharif</option><option>Rabi</option><option>Zaid</option><option>Other</option></select>
+        </div>
+        <div class="form-group"><label>Type</label>
+          <select id="agri-type"><option>Income</option><option>Expense</option></select>
+        </div>
+        <div class="form-group"><label>Amount (₹)</label><input type="number" id="agri-amount" placeholder="e.g. 50000"/></div>
+        <div class="form-group"><label>Description</label><input type="text" id="agri-desc" placeholder="e.g. Sold wheat to mandi"/></div>
+      </div>
+      <br/>
+      <button class="btn btn-primary" onclick="addAgri()">➕ Add Record</button>
+    </div>
+    <div class="card">
+      <h3>Agriculture Records</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Crop</th><th>Land</th><th>Season</th><th>Type</th><th>Amount (₹)</th><th>Description</th><th></th></tr></thead>
+        <tbody id="agri-body"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ========== VEHICLES ========== -->
+  <div id="page-vehicles" class="page">
+    <div class="page-header">
+      <div><h2>🚛 Vehicles</h2><p>Manage trucks, cars, tractors</p></div>
+      <button class="btn btn-success" onclick="exportCSV('vehexp')">⬇️ Export Expenses CSV</button>
+    </div>
+    <div class="card">
+      <h3>Register Vehicle</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Vehicle No.</label><input type="text" id="veh-no" placeholder="e.g. MH12AB1234"/></div>
+        <div class="form-group"><label>Type</label>
+          <select id="veh-type"><option>Truck</option><option>Car</option><option>Tractor</option><option>Other</option></select>
+        </div>
+        <div class="form-group"><label>Model / Name</label><input type="text" id="veh-model" placeholder="e.g. Tata 407"/></div>
+        <div class="form-group"><label>Status</label>
+          <select id="veh-status"><option>Active</option><option>Under Repair</option><option>Idle</option></select>
+        </div>
+      </div>
+      <br/>
+      <button class="btn btn-primary" onclick="addVehicle()">➕ Register</button>
+    </div>
+    <div class="card">
+      <h3>Vehicles List</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Vehicle No.</th><th>Type</th><th>Model</th><th>Status</th><th></th></tr></thead>
+        <tbody id="veh-body"></tbody>
+      </table></div>
+    </div>
+    <div class="section-title">Vehicle Expenses / Trips</div>
+    <div class="card">
+      <h3>Add Expense / Trip</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Date</label><input type="date" id="vexp-date"/></div>
+        <div class="form-group"><label>Vehicle No.</label><input type="text" id="vexp-no" placeholder="e.g. MH12AB1234"/></div>
+        <div class="form-group"><label>Category</label>
+          <select id="vexp-cat">
+            <option>Fuel</option><option>Maintenance</option><option>Trip Income</option><option>Driver Salary</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Amount (₹)</label><input type="number" id="vexp-amount" placeholder="e.g. 2000"/></div>
+        <div class="form-group"><label>Details</label><input type="text" id="vexp-details" placeholder="e.g. Diesel fill-up, Mumbai trip"/></div>
+      </div>
+      <br/>
+      <button class="btn btn-primary" onclick="addVehExp()">➕ Add</button>
+    </div>
+    <div class="card">
+      <h3>Expense / Trip Records</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Vehicle</th><th>Category</th><th>Amount (₹)</th><th>Details</th><th></th></tr></thead>
+        <tbody id="vexp-body"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ========== CREDIT ========== -->
+  <div id="page-credit" class="page">
+    <div class="page-header">
+      <div><h2>💰 Credit / Loans</h2><p>Money given &amp; received on credit</p></div>
+      <button class="btn btn-success" onclick="exportCSV('credit')">⬇️ Export CSV</button>
+    </div>
+    <div class="card">
+      <h3>Add Credit Entry</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Date Given</label><input type="date" id="cr-date"/></div>
+        <div class="form-group"><label>Person Name</label><input type="text" id="cr-name" placeholder="e.g. Suresh Patil"/></div>
+        <div class="form-group"><label>Phone</label><input type="text" id="cr-phone" placeholder="e.g. 9876543210"/></div>
+        <div class="form-group"><label>Amount Given (₹)</label><input type="number" id="cr-amount" placeholder="e.g. 50000"/></div>
+        <div class="form-group"><label>Interest (% per month)</label><input type="number" id="cr-interest" placeholder="e.g. 2" step="0.1"/></div>
+        <div class="form-group"><label>Due Date</label><input type="date" id="cr-due"/></div>
+        <div class="form-group"><label>Amount Returned (₹)</label><input type="number" id="cr-returned" placeholder="0 if none yet"/></div>
+        <div class="form-group"><label>Status</label>
+          <select id="cr-status"><option>Active</option><option>Partial</option><option>Closed</option></select>
+        </div>
+        <div class="form-group"><label>Notes</label><input type="text" id="cr-notes" placeholder="Optional"/></div>
+      </div>
+      <br/>
+      <button class="btn btn-primary" onclick="addCredit()">➕ Add Entry</button>
+    </div>
+    <div class="card">
+      <h3>Credit Records</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Name</th><th>Phone</th><th>Given (₹)</th><th>Interest %</th><th>Due Date</th><th>Returned (₹)</th><th>Balance (₹)</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="cr-body"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ========== TENDERS ========== -->
+  <div id="page-tenders" class="page">
+    <div class="page-header">
+      <div><h2>📋 Tenders / Contracts</h2><p>Track all tenders and contractor work</p></div>
+      <button class="btn btn-success" onclick="exportCSV('tenders')">⬇️ Export CSV</button>
+    </div>
+    <div class="card">
+      <h3>Add Tender / Contract</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Date</label><input type="date" id="ten-date"/></div>
+        <div class="form-group"><label>Tender / Project Name</label><input type="text" id="ten-name" placeholder="e.g. Road Construction - Nashik"/></div>
+        <div class="form-group"><label>Client / Department</label><input type="text" id="ten-client" placeholder="e.g. PWD, NHAI"/></div>
+        <div class="form-group"><label>Contract Value (₹)</label><input type="number" id="ten-value" placeholder="e.g. 500000"/></div>
+        <div class="form-group"><label>Amount Received (₹)</label><input type="number" id="ten-received" placeholder="e.g. 200000"/></div>
+        <div class="form-group"><label>Expense (₹)</label><input type="number" id="ten-expense" placeholder="e.g. 150000"/></div>
+        <div class="form-group"><label>Start Date</label><input type="date" id="ten-start"/></div>
+        <div class="form-group"><label>End Date</label><input type="date" id="ten-end"/></div>
+        <div class="form-group"><label>Status</label>
+          <select id="ten-status"><option>Bidding</option><option>Won</option><option>In Progress</option><option>Completed</option><option>Lost</option></select>
+        </div>
+        <div class="form-group"><label>Notes</label><input type="text" id="ten-notes" placeholder="Optional"/></div>
+      </div>
+      <br/>
+      <button class="btn btn-primary" onclick="addTender()">➕ Add Tender</button>
+    </div>
+    <div class="card">
+      <h3>Tenders / Contracts List</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Project</th><th>Client</th><th>Value (₹)</th><th>Received (₹)</th><th>Expense (₹)</th><th>Profit (₹)</th><th>Period</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="ten-body"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ========== REPORTS ========== -->
+  <div id="page-reports" class="page">
+    <div class="page-header">
+      <div><h2>📈 Reports</h2><p>Business summary &amp; financials</p></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-success" onclick="exportAllCSV()">⬇️ Export All Data</button>
+        <button class="btn btn-outline" onclick="window.print()">🖨️ Print Report</button>
+      </div>
+    </div>
+    <div id="report-content"></div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ===== DATA STORE =====
+const DB = {
+  get(key) { try { return JSON.parse(localStorage.getItem('bb_'+key)||'[]'); } catch(e){return[];} },
+  set(key,val) { localStorage.setItem('bb_'+key, JSON.stringify(val)); },
+  add(key,obj) { const arr=this.get(key); arr.unshift(obj); this.set(key,arr); },
+  del(key,id) { this.set(key, this.get(key).filter(x=>x.id!==id)); }
+};
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function fmt(n) { return '₹'+(+n||0).toLocaleString('en-IN'); }
+function today() { return new Date().toISOString().slice(0,10); }
+function fmtDate(d) { if(!d) return '—'; const p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+
+// ===== NAVIGATION =====
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('#sidebar nav a').forEach(a=>a.classList.remove('active'));
+  document.querySelectorAll('#bottom-nav a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+  // also activate matching bottom-nav link when called from sidebar (el is sidebar link)
+  document.querySelectorAll('#bottom-nav a').forEach(a=>{
+    const oc=a.getAttribute('onclick')||'';
+    if(oc.includes("'"+name+"'")) a.classList.add('active');
+  });
+  if(name==='dashboard') refreshDashboard();
+  if(name==='reports') buildReports();
+  // render tables
+  const renders = {sand:renderSand, agriculture:renderAgri, vehicles:renderVehicles, credit:renderCredit, tenders:renderTenders};
+  if(renders[name]) renders[name]();
+}
+
+// Pre-fill today's date on all date inputs
+window.addEventListener('DOMContentLoaded', ()=>{
+  document.querySelectorAll('input[type=date]').forEach(d=>{ if(!d.value) d.value=today(); });
+  refreshDashboard();
+});
+
+// ===== SAND =====
+function addSand() {
+  const qty=+document.getElementById('sand-qty').value||0;
+  const rate=+document.getElementById('sand-rate').value||0;
+  const obj = {
+    id:uid(),
+    date:document.getElementById('sand-date').value||today(),
+    buyer:document.getElementById('sand-buyer').value.trim()||'—',
+    vehicle:document.getElementById('sand-vehicle').value.trim(),
+    qty, rate, total:qty*rate,
+    paid:+document.getElementById('sand-paid').value||0,
+    status:document.getElementById('sand-status').value,
+    notes:document.getElementById('sand-notes').value.trim()
+  };
+  DB.add('sand',obj);
+  ['sand-buyer','sand-vehicle','sand-qty','sand-rate','sand-paid','sand-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('sand-status').value='Paid';
+  renderSand();
+}
+function renderSand() {
+  const rows=DB.get('sand');
+  const tb=document.getElementById('sand-body');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="icon">🏗️</div>No sales yet</div></td></tr>';return;}
+  tb.innerHTML=rows.map(r=>`<tr>
+    <td>${fmtDate(r.date)}</td><td>${r.buyer}</td><td>${r.vehicle||'—'}</td>
+    <td>${r.qty}</td><td>${fmt(r.rate)}</td><td>${fmt(r.total)}</td>
+    <td>${fmt(r.paid)}</td>
+    <td><span class="badge ${r.status==='Paid'?'badge-green':r.status==='Partial'?'badge-warn':'badge-red'}">${r.status}</span></td>
+    <td>${r.notes||'—'}</td>
+    <td><button class="btn btn-danger" onclick="DB.del('sand','${r.id}');renderSand()">🗑</button></td>
+  </tr>`).join('');
+}
+
+// ===== AGRICULTURE =====
+function addAgri() {
+  const obj = {
+    id:uid(),
+    date:document.getElementById('agri-date').value||today(),
+    crop:document.getElementById('agri-crop').value.trim()||'—',
+    land:document.getElementById('agri-land').value,
+    season:document.getElementById('agri-season').value,
+    type:document.getElementById('agri-type').value,
+    amount:+document.getElementById('agri-amount').value||0,
+    desc:document.getElementById('agri-desc').value.trim()
+  };
+  DB.add('agriculture',obj);
+  ['agri-crop','agri-land','agri-amount','agri-desc'].forEach(id=>document.getElementById(id).value='');
+  renderAgri();
+}
+function renderAgri() {
+  const rows=DB.get('agriculture');
+  const tb=document.getElementById('agri-body');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="8"><div class="empty"><div class="icon">🌾</div>No records yet</div></td></tr>';return;}
+  tb.innerHTML=rows.map(r=>`<tr>
+    <td>${fmtDate(r.date)}</td><td>${r.crop}</td><td>${r.land||'—'} ac</td>
+    <td>${r.season}</td>
+    <td><span class="badge ${r.type==='Income'?'badge-green':'badge-red'}">${r.type}</span></td>
+    <td>${fmt(r.amount)}</td><td>${r.desc||'—'}</td>
+    <td><button class="btn btn-danger" onclick="DB.del('agriculture','${r.id}');renderAgri()">🗑</button></td>
+  </tr>`).join('');
+}
+
+// ===== VEHICLES =====
+function addVehicle() {
+  const obj = {
+    id:uid(),
+    no:document.getElementById('veh-no').value.trim().toUpperCase(),
+    type:document.getElementById('veh-type').value,
+    model:document.getElementById('veh-model').value.trim(),
+    status:document.getElementById('veh-status').value
+  };
+  if(!obj.no){alert('Enter vehicle number');return;}
+  DB.add('vehicles',obj);
+  ['veh-no','veh-model'].forEach(id=>document.getElementById(id).value='');
+  renderVehicles();
+}
+function addVehExp() {
+  const obj = {
+    id:uid(),
+    date:document.getElementById('vexp-date').value||today(),
+    no:document.getElementById('vexp-no').value.trim().toUpperCase(),
+    cat:document.getElementById('vexp-cat').value,
+    amount:+document.getElementById('vexp-amount').value||0,
+    details:document.getElementById('vexp-details').value.trim()
+  };
+  DB.add('vehexp',obj);
+  ['vexp-no','vexp-amount','vexp-details'].forEach(id=>document.getElementById(id).value='');
+  renderVehicles();
+}
+function renderVehicles() {
+  const vehs=DB.get('vehicles');
+  const vb=document.getElementById('veh-body');
+  if(!vehs.length){vb.innerHTML='<tr><td colspan="5"><div class="empty"><div class="icon">🚛</div>No vehicles registered</div></td></tr>';}
+  else {
+    vb.innerHTML=vehs.map(v=>`<tr>
+      <td><strong>${v.no}</strong></td><td>${v.type}</td><td>${v.model||'—'}</td>
+      <td><span class="badge ${v.status==='Active'?'badge-green':v.status==='Under Repair'?'badge-red':'badge-warn'}">${v.status}</span></td>
+      <td><button class="btn btn-danger" onclick="DB.del('vehicles','${v.id}');renderVehicles()">🗑</button></td>
+    </tr>`).join('');
+  }
+  const exps=DB.get('vehexp');
+  const eb=document.getElementById('vexp-body');
+  if(!exps.length){eb.innerHTML='<tr><td colspan="6"><div class="empty"><div class="icon">📋</div>No expense records</div></td></tr>';}
+  else {
+    eb.innerHTML=exps.map(e=>`<tr>
+      <td>${fmtDate(e.date)}</td><td>${e.no||'—'}</td>
+      <td><span class="badge badge-blue">${e.cat}</span></td>
+      <td>${fmt(e.amount)}</td><td>${e.details||'—'}</td>
+      <td><button class="btn btn-danger" onclick="DB.del('vehexp','${e.id}');renderVehicles()">🗑</button></td>
+    </tr>`).join('');
+  }
+}
+
+// ===== CREDIT =====
+function addCredit() {
+  const obj = {
+    id:uid(),
+    date:document.getElementById('cr-date').value||today(),
+    name:document.getElementById('cr-name').value.trim()||'—',
+    phone:document.getElementById('cr-phone').value.trim(),
+    amount:+document.getElementById('cr-amount').value||0,
+    interest:+document.getElementById('cr-interest').value||0,
+    due:document.getElementById('cr-due').value,
+    returned:+document.getElementById('cr-returned').value||0,
+    status:document.getElementById('cr-status').value,
+    notes:document.getElementById('cr-notes').value.trim()
+  };
+  DB.add('credit',obj);
+  ['cr-name','cr-phone','cr-amount','cr-interest','cr-returned','cr-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cr-due').value='';
+  document.getElementById('cr-status').value='Active';
+  renderCredit();
+}
+function renderCredit() {
+  const rows=DB.get('credit');
+  const tb=document.getElementById('cr-body');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="11"><div class="empty"><div class="icon">💰</div>No credit entries</div></td></tr>';return;}
+  const now=new Date(); now.setHours(0,0,0,0);
+  tb.innerHTML=rows.map(r=>{
+    const bal=r.amount-r.returned;
+    const due=r.due?new Date(r.due):null;
+    const overdue=due&&due<now&&r.status!=='Closed';
+    return `<tr style="${overdue?'background:#fff5f5':''}">
+      <td>${fmtDate(r.date)}</td><td><strong>${r.name}</strong></td><td>${r.phone||'—'}</td>
+      <td>${fmt(r.amount)}</td><td>${r.interest?r.interest+'%':'—'}</td>
+      <td>${r.due?fmtDate(r.due):'—'}${overdue?' <span class="badge badge-red">Overdue</span>':''}</td>
+      <td>${fmt(r.returned)}</td><td><strong>${fmt(bal)}</strong></td>
+      <td><span class="badge ${r.status==='Closed'?'badge-green':r.status==='Partial'?'badge-warn':'badge-red'}">${r.status}</span></td>
+      <td>${r.notes||'—'}</td>
+      <td><button class="btn btn-danger" onclick="DB.del('credit','${r.id}');renderCredit()">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== TENDERS =====
+function addTender() {
+  const val=+document.getElementById('ten-value').value||0;
+  const rec=+document.getElementById('ten-received').value||0;
+  const exp=+document.getElementById('ten-expense').value||0;
+  const obj = {
+    id:uid(),
+    date:document.getElementById('ten-date').value||today(),
+    name:document.getElementById('ten-name').value.trim()||'—',
+    client:document.getElementById('ten-client').value.trim(),
+    value:val, received:rec, expense:exp, profit:rec-exp,
+    start:document.getElementById('ten-start').value,
+    end:document.getElementById('ten-end').value,
+    status:document.getElementById('ten-status').value,
+    notes:document.getElementById('ten-notes').value.trim()
+  };
+  DB.add('tenders',obj);
+  ['ten-name','ten-client','ten-value','ten-received','ten-expense','ten-notes','ten-start','ten-end'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ten-status').value='Bidding';
+  renderTenders();
+}
+function renderTenders() {
+  const rows=DB.get('tenders');
+  const tb=document.getElementById('ten-body');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="11"><div class="empty"><div class="icon">📋</div>No tenders yet</div></td></tr>';return;}
+  tb.innerHTML=rows.map(r=>`<tr>
+    <td>${fmtDate(r.date)}</td><td><strong>${r.name}</strong></td><td>${r.client||'—'}</td>
+    <td>${fmt(r.value)}</td><td>${fmt(r.received)}</td><td>${fmt(r.expense)}</td>
+    <td class="${r.profit>=0?'':''}"><strong style="color:${r.profit>=0?'var(--accent)':'var(--danger)'}">${fmt(r.profit)}</strong></td>
+    <td>${r.start?fmtDate(r.start):'—'}${r.end?' → '+fmtDate(r.end):''}</td>
+    <td><span class="badge ${r.status==='Completed'?'badge-green':r.status==='Won'||r.status==='In Progress'?'badge-blue':r.status==='Lost'?'badge-red':'badge-warn'}">${r.status}</span></td>
+    <td>${r.notes||'—'}</td>
+    <td><button class="btn btn-danger" onclick="DB.del('tenders','${r.id}');renderTenders()">🗑</button></td>
+  </tr>`).join('');
+}
+
+// ===== DASHBOARD =====
+function refreshDashboard() {
+  const sand=DB.get('sand'), agri=DB.get('agriculture'), vehexp=DB.get('vehexp'),
+        credit=DB.get('credit'), tenders=DB.get('tenders');
+
+  const sandIncome=sand.reduce((s,r)=>s+r.paid,0);
+  const sandPending=sand.filter(r=>r.status!=='Paid').reduce((s,r)=>s+(r.total-r.paid),0);
+  const agriIncome=agri.filter(r=>r.type==='Income').reduce((s,r)=>s+r.amount,0);
+  const agriExpense=agri.filter(r=>r.type==='Expense').reduce((s,r)=>s+r.amount,0);
+  const vehCost=vehexp.filter(r=>r.cat!=='Trip Income').reduce((s,r)=>s+r.amount,0);
+  const vehIncome=vehexp.filter(r=>r.cat==='Trip Income').reduce((s,r)=>s+r.amount,0);
+  const creditOut=credit.reduce((s,r)=>s+(r.amount-r.returned),0);
+  const tenProfit=tenders.filter(r=>r.status==='Completed'||r.status==='In Progress').reduce((s,r)=>s+r.profit,0);
+  const totalIncome=sandIncome+agriIncome+vehIncome+tenProfit;
+
+  document.getElementById('dash-tiles').innerHTML=`
+    <div class="tile green"><div class="label">Total Income</div><div class="value">${fmt(totalIncome)}</div><div class="sub">All businesses combined</div></div>
+    <div class="tile"><div class="label">Sand — Collected</div><div class="value">${fmt(sandIncome)}</div><div class="sub">Pending: ${fmt(sandPending)}</div></div>
+    <div class="tile green"><div class="label">Agriculture — Profit</div><div class="value">${fmt(agriIncome-agriExpense)}</div><div class="sub">Income: ${fmt(agriIncome)}</div></div>
+    <div class="tile warn"><div class="label">Vehicle Expenses</div><div class="value">${fmt(vehCost)}</div><div class="sub">Trip income: ${fmt(vehIncome)}</div></div>
+    <div class="tile red"><div class="label">Credit Outstanding</div><div class="value">${fmt(creditOut)}</div><div class="sub">${credit.filter(r=>r.status!=='Closed').length} active loans</div></div>
+    <div class="tile"><div class="label">Tender Profit</div><div class="value">${fmt(tenProfit)}</div><div class="sub">${tenders.filter(r=>r.status==='In Progress').length} in progress</div></div>
+    <div class="tile"><div class="label">Vehicles</div><div class="value">${DB.get('vehicles').length}</div><div class="sub">Registered</div></div>
+  `;
+
+  // Recent activity
+  const recent = [
+    ...sand.slice(0,3).map(r=>({date:r.date,icon:'🏗️',text:`Sand sale to ${r.buyer} — ${fmt(r.total)}`,status:r.status})),
+    ...agri.slice(0,3).map(r=>({date:r.date,icon:'🌾',text:`${r.type}: ${r.crop} — ${fmt(r.amount)}`})),
+    ...credit.slice(0,3).map(r=>({date:r.date,icon:'💰',text:`Credit to ${r.name} — ${fmt(r.amount)}`})),
+    ...tenders.slice(0,3).map(r=>({date:r.date,icon:'📋',text:`Tender: ${r.name} — ${fmt(r.value)}`})),
+  ].sort((a,b)=>b.date>a.date?1:-1).slice(0,8);
+  const rd=document.getElementById('dash-recent');
+  if(!recent.length){rd.innerHTML='<div class="empty"><div class="icon">📭</div>No activity yet. Start adding records!</div>';return;}
+  rd.innerHTML='<div class="table-wrap"><table><thead><tr><th>Date</th><th>Activity</th></tr></thead><tbody>'+
+    recent.map(r=>`<tr><td>${fmtDate(r.date)}</td><td>${r.icon} ${r.text}</td></tr>`).join('')+'</tbody></table></div>';
+
+  // Credit alerts
+  const now=new Date(); now.setHours(0,0,0,0);
+  const soon=new Date(now); soon.setDate(soon.getDate()+7);
+  const alerts=credit.filter(r=>{
+    if(r.status==='Closed') return false;
+    if(!r.due) return false;
+    const d=new Date(r.due);
+    return d<=soon;
+  });
+  const ca=document.getElementById('dash-credit-alerts');
+  if(!alerts.length){ca.innerHTML='<div class="empty"><div class="icon">✅</div>No overdue or upcoming payments</div>';return;}
+  ca.innerHTML='<div class="table-wrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Amount Due</th><th>Due Date</th><th>Status</th></tr></thead><tbody>'+
+    alerts.map(r=>{
+      const d=new Date(r.due); const overdue=d<now;
+      return `<tr style="background:${overdue?'#fff5f5':'#fffbeb'}">
+        <td><strong>${r.name}</strong></td><td>${r.phone||'—'}</td>
+        <td><strong>${fmt(r.amount-r.returned)}</strong></td>
+        <td>${fmtDate(r.due)}</td>
+        <td><span class="badge ${overdue?'badge-red':'badge-warn'}">${overdue?'Overdue':'Due soon'}</span></td>
+      </tr>`;
+    }).join('')+'</tbody></table></div>';
+}
+
+// ===== REPORTS =====
+function buildReports() {
+  const sand=DB.get('sand'), agri=DB.get('agriculture'), vehexp=DB.get('vehexp'),
+        credit=DB.get('credit'), tenders=DB.get('tenders'), vehicles=DB.get('vehicles');
+
+  const sandTotal=sand.reduce((s,r)=>s+r.total,0);
+  const sandCollected=sand.reduce((s,r)=>s+r.paid,0);
+  const sandPending=sandTotal-sandCollected;
+
+  const agriIncome=agri.filter(r=>r.type==='Income').reduce((s,r)=>s+r.amount,0);
+  const agriExpense=agri.filter(r=>r.type==='Expense').reduce((s,r)=>s+r.amount,0);
+
+  const vehIncome=vehexp.filter(r=>r.cat==='Trip Income').reduce((s,r)=>s+r.amount,0);
+  const vehCost=vehexp.filter(r=>r.cat!=='Trip Income').reduce((s,r)=>s+r.amount,0);
+
+  const creditGiven=credit.reduce((s,r)=>s+r.amount,0);
+  const creditReturned=credit.reduce((s,r)=>s+r.returned,0);
+  const creditPending=creditGiven-creditReturned;
+
+  const tenValue=tenders.reduce((s,r)=>s+r.value,0);
+  const tenProfit=tenders.filter(r=>r.status==='Completed'||r.status==='In Progress').reduce((s,r)=>s+r.profit,0);
+
+  const totalIncome=sandCollected+agriIncome+vehIncome+tenProfit;
+  const totalExpense=agriExpense+vehCost;
+
+  document.getElementById('report-content').innerHTML=`
+    <div class="card">
+      <h3>📊 Business Summary Report — ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})}</h3>
+      <div class="tiles" style="margin-top:12px">
+        <div class="tile green"><div class="label">Total Revenue</div><div class="value">${fmt(totalIncome)}</div></div>
+        <div class="tile red"><div class="label">Total Expenses</div><div class="value">${fmt(totalExpense)}</div></div>
+        <div class="tile green"><div class="label">Net Profit</div><div class="value">${fmt(totalIncome-totalExpense)}</div></div>
+        <div class="tile warn"><div class="label">Credit Outstanding</div><div class="value">${fmt(creditPending)}</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🏗️ Sand Business</h3>
+      <table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>
+        <tr><td>Total Sales</td><td><strong>${sand.length}</strong></td></tr>
+        <tr><td>Total Amount Billed</td><td><strong>${fmt(sandTotal)}</strong></td></tr>
+        <tr><td>Amount Collected</td><td style="color:var(--accent)"><strong>${fmt(sandCollected)}</strong></td></tr>
+        <tr><td>Amount Pending</td><td style="color:var(--danger)"><strong>${fmt(sandPending)}</strong></td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="card">
+      <h3>🌾 Agriculture</h3>
+      <table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>
+        <tr><td>Total Records</td><td><strong>${agri.length}</strong></td></tr>
+        <tr><td>Total Income</td><td style="color:var(--accent)"><strong>${fmt(agriIncome)}</strong></td></tr>
+        <tr><td>Total Expense</td><td style="color:var(--danger)"><strong>${fmt(agriExpense)}</strong></td></tr>
+        <tr><td>Net Profit</td><td style="color:${agriIncome-agriExpense>=0?'var(--accent)':'var(--danger)'}"><strong>${fmt(agriIncome-agriExpense)}</strong></td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="card">
+      <h3>🚛 Vehicles (${vehicles.length} registered)</h3>
+      <table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>
+        <tr><td>Trip Income</td><td style="color:var(--accent)"><strong>${fmt(vehIncome)}</strong></td></tr>
+        <tr><td>Fuel + Maintenance Cost</td><td style="color:var(--danger)"><strong>${fmt(vehCost)}</strong></td></tr>
+        <tr><td>Net Vehicle Profit</td><td style="color:${vehIncome-vehCost>=0?'var(--accent)':'var(--danger)'}"><strong>${fmt(vehIncome-vehCost)}</strong></td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="card">
+      <h3>💰 Credit / Loans</h3>
+      <table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>
+        <tr><td>Total Entries</td><td><strong>${credit.length}</strong></td></tr>
+        <tr><td>Total Given</td><td><strong>${fmt(creditGiven)}</strong></td></tr>
+        <tr><td>Total Returned</td><td style="color:var(--accent)"><strong>${fmt(creditReturned)}</strong></td></tr>
+        <tr><td>Outstanding Balance</td><td style="color:var(--danger)"><strong>${fmt(creditPending)}</strong></td></tr>
+        <tr><td>Active Loans</td><td><strong>${credit.filter(r=>r.status!=='Closed').length}</strong></td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="card">
+      <h3>📋 Tenders / Contracts</h3>
+      <table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>
+        <tr><td>Total Tenders</td><td><strong>${tenders.length}</strong></td></tr>
+        <tr><td>Total Contract Value</td><td><strong>${fmt(tenValue)}</strong></td></tr>
+        <tr><td>Net Profit (completed+active)</td><td style="color:${tenProfit>=0?'var(--accent)':'var(--danger)'}"><strong>${fmt(tenProfit)}</strong></td></tr>
+        <tr><td>Won / In Progress</td><td><strong>${tenders.filter(r=>r.status==='Won'||r.status==='In Progress').length}</strong></td></tr>
+        <tr><td>Completed</td><td><strong>${tenders.filter(r=>r.status==='Completed').length}</strong></td></tr>
+      </tbody></table>
+    </div>
+  `;
+}
+
+// ===== CSV EXPORT =====
+const CSV_SCHEMAS = {
+  sand: {
+    label: 'Sand_Sales',
+    headers: ['Date','Buyer','Vehicle No','Quantity','Rate (Rs)','Total (Rs)','Amount Received (Rs)','Payment Status','Notes'],
+    row: r => [r.date, r.buyer, r.vehicle||'', r.qty, r.rate, r.total, r.paid, r.status, r.notes||'']
+  },
+  agriculture: {
+    label: 'Agriculture',
+    headers: ['Date','Crop','Land (Acres)','Season','Type','Amount (Rs)','Description'],
+    row: r => [r.date, r.crop, r.land||'', r.season, r.type, r.amount, r.desc||'']
+  },
+  vehicles: {
+    label: 'Vehicles',
+    headers: ['Vehicle No','Type','Model','Status'],
+    row: r => [r.no, r.type, r.model||'', r.status]
+  },
+  vehexp: {
+    label: 'Vehicle_Expenses',
+    headers: ['Date','Vehicle No','Category','Amount (Rs)','Details'],
+    row: r => [r.date, r.no||'', r.cat, r.amount, r.details||'']
+  },
+  credit: {
+    label: 'Credit_Loans',
+    headers: ['Date Given','Name','Phone','Amount Given (Rs)','Interest % per month','Due Date','Amount Returned (Rs)','Balance (Rs)','Status','Notes'],
+    row: r => [r.date, r.name, r.phone||'', r.amount, r.interest||0, r.due||'', r.returned, r.amount-r.returned, r.status, r.notes||'']
+  },
+  tenders: {
+    label: 'Tenders',
+    headers: ['Date','Project Name','Client','Contract Value (Rs)','Amount Received (Rs)','Expense (Rs)','Profit (Rs)','Start Date','End Date','Status','Notes'],
+    row: r => [r.date, r.name, r.client||'', r.value, r.received, r.expense, r.profit, r.start||'', r.end||'', r.status, r.notes||'']
+  }
+};
+
+function toCSVString(headers, rows) {
+  const escape = v => {
+    const s = String(v==null?'':v);
+    return (s.includes(',') || s.includes('"') || s.includes('\n')) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
+  return [headers, ...rows].map(row => row.map(escape).join(',')).join('\r\n');
+}
+
+function downloadCSV(filename, csvStr) {
+  const bom = '\uFEFF'; // UTF-8 BOM so Excel opens Rs symbol correctly
+  const blob = new Blob([bom + csvStr], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function exportCSV(key) {
+  const schema = CSV_SCHEMAS[key];
+  if (!schema) return;
+  const data = DB.get(key);
+  if (!data.length) { alert('No data to export yet!'); return; }
+  const csv = toCSVString(schema.headers, data.map(schema.row));
+  const date = new Date().toISOString().slice(0,10);
+  downloadCSV('BrotherBiz_' + schema.label + '_' + date + '.csv', csv);
+}
+
+function exportAllCSV() {
+  const keys = ['sand','agriculture','vehicles','vehexp','credit','tenders'];
+  let hasData = false;
+  keys.forEach(key => {
+    const data = DB.get(key);
+    if (data.length) {
+      hasData = true;
+      const schema = CSV_SCHEMAS[key];
+      const csv = toCSVString(schema.headers, data.map(schema.row));
+      const date = new Date().toISOString().slice(0,10);
+      // small delay between downloads so browser doesn't block them
+      setTimeout(() => downloadCSV('BrotherBiz_' + schema.label + '_' + date + '.csv', csv), keys.indexOf(key) * 400);
+    }
+  });
+  if (!hasData) alert('No data to export yet!');
+}
+// ===== PWA: SERVICE WORKER =====
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW error:', err));
+  });
+}
+
+// ===== PWA: INSTALL PROMPT =====
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.style.display = 'flex';
+});
+window.addEventListener('appinstalled', () => {
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.style.display = 'none';
+  deferredPrompt = null;
+});
+function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+  document.getElementById('install-banner').style.display = 'none';
+}
+
+</script>
+</body>
+</html>
